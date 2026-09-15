@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import List
 
-from excel_to_pdf import convert_excel_to_pdf
 from pdf_to_word import convert_pdf_to_word
 from word_to_pdf import convert_word_to_pdf
 from pdf_to_jpg import convert_pdf_to_jpg
@@ -14,8 +13,6 @@ from split_pdf import (
     extract_selected_pages
 )
 
-from pdf_to_excel import convert_pdf_to_excel
-
 import io
 
 
@@ -24,71 +21,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.post("/api/excel-to-pdf")
-async def excel_to_pdf(file: UploadFile = File(...)):
-    try:
-        excel_bytes = await file.read()
 
-        if not file.filename.lower().endswith(
-            (".xlsx", ".xlsm")
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Please upload an Excel file (.xlsx or .xlsm)."
-            )
-
-        pdf_bytes = convert_excel_to_pdf(excel_bytes)
-
-        return StreamingResponse(
-            io.BytesIO(pdf_bytes),
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": (
-                    'attachment; filename="converted.pdf"'
-                )
-            }
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Excel to PDF conversion failed: {error}"
-        )
-
-@app.post("/api/pdf-to-excel")
-async def pdf_to_excel(file: UploadFile = File(...)):
-    try:
-        pdf_bytes = await file.read()
-
-        excel_bytes = convert_pdf_to_excel(pdf_bytes)
-
-        return StreamingResponse(
-            io.BytesIO(excel_bytes),
-            media_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
-            headers={
-                "Content-Disposition": (
-                    'attachment; filename="converted.xlsx"'
-                )
-            }
-        )
-
-    except ValueError as error:
-        raise HTTPException(
-            status_code=400,
-            detail=str(error)
-        )
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"PDF to Excel conversion failed: {error}"
-        )
 # =========================================
 # CORS
 # =========================================
