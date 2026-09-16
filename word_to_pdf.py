@@ -44,9 +44,13 @@ def convert_word_to_pdf(word_bytes, original_filename):
             file.write(word_bytes)
 
         # LibreOffice path
-        libreoffice_path = (
-            r"C:\Program Files\LibreOffice\program\soffice.exe"
-        )
+        if os.name == "nt":
+            libreoffice_path = (
+                r"C:\Program Files\LibreOffice\program\soffice.exe"
+            )
+        else:
+            libreoffice_path = "libreoffice"
+
 
         # Run LibreOffice conversion
         result = subprocess.run(
