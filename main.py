@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import List
 
+from excel_to_pdf import convert_excel_to_pdf
+from pdf_to_excel import convert_pdf_to_excel
 from pdf_to_word import convert_pdf_to_word
 from word_to_pdf import convert_word_to_pdf
 from pdf_to_jpg import convert_pdf_to_jpg
@@ -12,6 +14,8 @@ from split_pdf import (
     split_every_page,
     extract_selected_pages
 )
+
+
 
 import io
 
@@ -240,7 +244,144 @@ async def word_to_pdf(
                 "Please try another file."
             )
         )
+# =========================================
+# EXCEL → PDF
+# =========================================
 
+@app.post("/api/excel-to-pdf")
+async def excel_to_pdf(
+    file: UploadFile = File(...)
+):
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No file was selected."
+        )
+
+    if not file.filename.lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload an Excel file."
+        )
+
+    try:
+
+        excel_bytes = await file.read()
+
+        if not excel_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded Excel file is empty."
+            )
+
+        pdf_bytes = convert_excel_to_pdf(
+            excel_bytes,
+            file.filename
+        )
+
+        output_filename = (
+            file.filename.rsplit(".", 1)[0]
+            + ".pdf"
+        )
+
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{output_filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+
+        print(
+            "Excel → PDF error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to convert this Excel file. "
+                "Please try another file."
+            )
+        )
+
+        # =========================================
+# PDF → EXCEL
+# =========================================
+
+@app.post("/api/pdf-to-excel")
+async def pdf_to_excel(
+    file: UploadFile = File(...)
+):
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No file was selected."
+        )
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a PDF file."
+        )
+
+    try:
+
+        pdf_bytes = await file.read()
+
+        if not pdf_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded PDF is empty."
+            )
+
+        excel_bytes = convert_pdf_to_excel(
+            pdf_bytes,
+            file.filename
+        )
+
+        output_filename = (
+            file.filename.rsplit(".", 1)[0]
+            + ".xlsx"
+        )
+
+        return StreamingResponse(
+            io.BytesIO(excel_bytes),
+            media_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".spreadsheetml.sheet"
+            ),
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{output_filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+
+        print(
+            "PDF → Excel error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to convert this PDF. "
+                "Please try another PDF."
+            )
+        )
 # =========================================
 # MERGE PDF
 # =========================================
