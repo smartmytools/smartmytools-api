@@ -6,6 +6,7 @@ from typing import List
 from excel_to_pdf import convert_excel_to_pdf
 from pdf_to_excel import convert_pdf_to_excel
 from pdf_to_powerpoint import convert_pdf_to_powerpoint
+from rotate_pdf import rotate_pdf
 from pdf_to_word import convert_pdf_to_word
 from word_to_pdf import convert_word_to_pdf
 from pdf_to_jpg import convert_pdf_to_jpg
@@ -481,6 +482,74 @@ async def pdf_to_powerpoint(
             status_code=500,
             detail=(
                 "Unable to convert this PDF to PowerPoint. "
+                "Please try another PDF."
+            )
+        )
+
+        # =========================================
+# ROTATE PDF
+# =========================================
+
+@app.post("/api/rotate-pdf")
+async def rotate_pdf_endpoint(
+    file: UploadFile = File(...),
+    rotation_angle: int = Form(...),
+    rotation_scope: str = Form("all")
+):
+    try:
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="No PDF file was provided."
+            )
+
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=400,
+                detail="Only PDF files are allowed."
+            )
+
+        pdf_bytes = await file.read()
+
+        if not pdf_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded PDF is empty."
+            )
+
+        rotated_pdf_bytes = rotate_pdf(
+            pdf_bytes,
+            rotation_angle,
+            rotation_scope
+        )
+
+        output_filename = (
+            file.filename.rsplit(".", 1)[0]
+            + ".pdf"
+        )
+
+        return StreamingResponse(
+            io.BytesIO(rotated_pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{output_filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        print(
+            "Rotate PDF error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to rotate this PDF. "
                 "Please try another PDF."
             )
         )
