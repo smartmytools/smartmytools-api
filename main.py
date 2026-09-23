@@ -5,6 +5,7 @@ from typing import List
 
 from excel_to_pdf import convert_excel_to_pdf
 from pdf_to_excel import convert_pdf_to_excel
+from pdf_to_powerpoint import convert_pdf_to_powerpoint
 from pdf_to_word import convert_pdf_to_word
 from word_to_pdf import convert_word_to_pdf
 from pdf_to_jpg import convert_pdf_to_jpg
@@ -379,6 +380,107 @@ async def pdf_to_excel(
             status_code=500,
             detail=(
                 "Unable to convert this PDF. "
+                "Please try another PDF."
+            )
+        )
+
+        # =========================================
+# PDF → POWERPOINT
+# =========================================
+
+@app.post("/api/pdf-to-powerpoint")
+async def pdf_to_powerpoint(
+    file: UploadFile = File(...)
+):
+
+    try:
+
+        if not file.filename:
+
+            raise HTTPException(
+                status_code=400,
+                detail="No PDF file was provided."
+            )
+
+
+        if not file.filename.lower().endswith(".pdf"):
+
+            raise HTTPException(
+                status_code=400,
+                detail="Only PDF files are allowed."
+            )
+
+
+        pdf_bytes = await file.read()
+
+
+        if not pdf_bytes:
+
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded PDF is empty."
+            )
+
+
+        # -----------------------------------------
+        # Convert PDF → PowerPoint
+        # -----------------------------------------
+
+        powerpoint_bytes = convert_pdf_to_powerpoint(
+            pdf_bytes
+        )
+
+
+        # -----------------------------------------
+        # Output filename
+        # -----------------------------------------
+
+        output_filename = (
+            file.filename.rsplit(
+                ".",
+                1
+            )[0]
+            + ".pptx"
+        )
+
+
+        # -----------------------------------------
+        # Return PowerPoint presentation
+        # -----------------------------------------
+
+        return StreamingResponse(
+
+            io.BytesIO(
+                powerpoint_bytes
+            ),
+
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "presentationml.presentation"
+            ),
+
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{output_filename}"'
+            }
+        )
+
+
+    except HTTPException:
+        raise
+
+
+    except Exception as error:
+
+        print(
+            "PDF → PowerPoint error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to convert this PDF to PowerPoint. "
                 "Please try another PDF."
             )
         )
