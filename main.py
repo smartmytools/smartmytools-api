@@ -7,6 +7,7 @@ from excel_to_pdf import convert_excel_to_pdf
 from pdf_to_excel import convert_pdf_to_excel
 from pdf_to_powerpoint import convert_pdf_to_powerpoint
 from rotate_pdf import rotate_pdf
+from page_number import add_page_numbers
 from pdf_to_word import convert_pdf_to_word
 from word_to_pdf import convert_word_to_pdf
 from pdf_to_jpg import convert_pdf_to_jpg
@@ -973,4 +974,74 @@ async def pdf_to_jpg_api(
         raise HTTPException(
             status_code=500,
             detail="Unable to convert this PDF to JPG."
+        )
+
+        # =========================================
+# ADD PAGE NUMBERS TO PDF
+# =========================================
+
+@app.post("/api/page-number")
+async def page_number_endpoint(
+    file: UploadFile = File(...),
+    position: str = Form("bottom"),
+    alignment: str = Form("center"),
+    starting_number: int = Form(1)
+):
+    try:
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="No PDF file was provided."
+            )
+
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=400,
+                detail="Only PDF files are allowed."
+            )
+
+        pdf_bytes = await file.read()
+
+        if not pdf_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded PDF is empty."
+            )
+
+        numbered_pdf_bytes = add_page_numbers(
+            pdf_bytes,
+            position,
+            alignment,
+            starting_number
+        )
+
+        output_filename = (
+            file.filename.rsplit(".", 1)[0]
+            + "-numbered.pdf"
+        )
+
+        return StreamingResponse(
+            io.BytesIO(numbered_pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{output_filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        print(
+            "Page Number PDF error:",
+            repr(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to add page numbers to this PDF. "
+                "Please try another PDF."
+            )
         )
